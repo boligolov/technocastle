@@ -1,0 +1,194 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { t, type Lang, languages } from '../../../i18n/utils';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths({ paginate }: { paginate: Function }) {
+  const allStories = await getCollection('stories');
+  const langs = Object.keys(languages) as Lang[];
+
+  return langs.flatMap(lang => {
+    const filtered = allStories
+      .filter(s => s.data.lang === lang)
+      .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+    return paginate(filtered, {
+      params: { lang },
+      pageSize: 10,
+    });
+  });
+}
+
+const { page } = Astro.props;
+const lang = Astro.params.lang as Lang;
+const i = t(lang);
+
+const pageLabel = i.home.pageOf
+  .replace('{current}', String(page.currentPage))
+  .replace('{total}', String(page.lastPage));
+---
+
+<BaseLayout title={page.currentPage === 1 ? i.stories.title : `${i.stories.title} — ${pageLabel}`} lang={lang}>
+  <header class="page-header">
+    <h1>{i.stories.title}</h1>
+    <p>{i.stories.subtitle}</p>
+  </header>
+
+  <div class="story-list">
+    {page.data.map((story, idx) => {
+      const num = String((page.currentPage - 1) * 10 + idx).padStart(2, '0');
+      return (
+        <article class="story-item">
+          <div class="story-number">{num}</div>
+          <div class="story-body">
+            <div class="story-tags">
+              {story.data.tags.map(tag => (
+                <span class="story-tag">{tag}</span>
+              ))}
+            </div>
+            <a href={`/${lang}/stories/${story.data.storySlug}`} class="story-title-link">
+              <h2>{story.data.title}</h2>
+            </a>
+            <p class="story-excerpt">{story.data.description}</p>
+            <a href={`/${lang}/stories/${story.data.storySlug}`} class="story-read">{i.home.readMore} &rarr;</a>
+          </div>
+          {story.data.image && (
+            <img class="story-image" src={story.data.image} alt={story.data.title} loading="lazy" />
+          )}
+        </article>
+      );
+    })}
+  </div>
+
+  {page.lastPage > 1 && (
+    <nav class="pagination">
+      {page.url.prev ? (
+        <a href={page.url.prev} class="pagination-link prev">&larr; {i.home.prevPage}</a>
+      ) : (
+        <span class="pagination-link prev disabled">&larr; {i.home.prevPage}</span>
+      )}
+      <span class="pagination-current">{pageLabel}</span>
+      {page.url.next ? (
+        <a href={page.url.next} class="pagination-link next">{i.home.nextPage} &rarr;</a>
+      ) : (
+        <span class="pagination-link next disabled">{i.home.nextPage} &rarr;</span>
+      )}
+    </nav>
+  )}
+</BaseLayout>
+
+<style>
+  .page-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header h1 { margin-bottom: 0.3em; }
+
+  .story-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .story-item {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+
+  .story-item:last-child { border-bottom: none; }
+
+  .story-number {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding-top: 0.3rem;
+    flex-shrink: 0;
+    width: 28px;
+  }
+
+  .story-body { flex: 1; min-width: 0; }
+
+  .story-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .story-tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 0.15em 0.5em;
+  }
+
+  .story-title-link {
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .story-title-link:hover {
+    color: var(--accent);
+  }
+
+  .story-title-link h2 {
+    font-size: 1.2rem;
+    margin-bottom: 0.3em;
+  }
+
+  .story-excerpt {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5em;
+  }
+
+  .story-read {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .story-image {
+    width: 140px;
+    height: auto;
+    object-fit: cover;
+    flex-shrink: 0;
+    order: 1;
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .pagination-link {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .pagination-link:hover { color: var(--accent-hover); }
+  .pagination-link.disabled { color: var(--text-muted); pointer-events: none; }
+  .pagination-current { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+  @media (max-width: 768px) {
+    .story-number { display: none; }
+    .story-item { flex-direction: column; gap: 0.8rem; }
+    .story-image { width: 100%; height: 160px; order: 0; }
+  }
+</style>

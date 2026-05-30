@@ -1,0 +1,123 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { t, type Lang, languages } from '../../i18n/utils';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map(lang => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const i = t(lang);
+---
+
+<BaseLayout title={i.contact.title} lang={lang}>
+  <h1>{i.contact.title}</h1>
+
+  <div class="about-section">
+    <img class="about-photo" src="/images/author.jpg" alt="TechnoCastle" />
+    <div class="about-text" set:html={i.contact.bio}></div>
+  </div>
+
+  <div class="contact-links">
+    <a href="mailto:alexdumgaev@gmail.com" class="contact-link">
+      <span class="contact-icon">@</span>
+      <span>Email</span>
+    </a>
+    <a href="https://t.me/turbofox" class="contact-link" target="_blank" rel="noopener">
+      <span class="contact-icon">TG</span>
+      <span>Telegram</span>
+    </a>
+    <a href="https://www.instagram.com/technomagian" class="contact-link" target="_blank" rel="noopener">
+      <span class="contact-icon">IG</span>
+      <span>Instagram</span>
+    </a>
+    <a href="https://github.com/boligolov" class="contact-link" target="_blank" rel="noopener">
+      <span class="contact-icon">GH</span>
+      <span>GitHub</span>
+    </a>
+    <a href="https://author.today/u/technomagian/works" class="contact-link" target="_blank" rel="noopener">
+      <span class="contact-icon">AT</span>
+      <span>Author Today</span>
+    </a>
+  </div>
+</BaseLayout>
+
+<style>
+  h1 {
+    margin-bottom: 2rem;
+  }
+
+  .about-section {
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+  }
+
+  .about-photo {
+    float: left;
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    margin: 0 1.5rem 1rem 0;
+    border: 1px solid var(--border);
+  }
+
+  .about-text p {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .contact-links {
+    clear: both;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .contact-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.95rem;
+    transition: color 0.15s;
+  }
+
+  .contact-link:hover {
+    color: var(--accent);
+  }
+
+  .contact-icon {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 28px;
+    text-align: center;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .skills {
+
+  }
+
+  .skills .about-skills {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 768px) {
+    .about-photo {
+      float: none;
+      display: block;
+      width: 160px;
+      height: 160px;
+      margin: 0 0 1rem 0;
+    }
+  }
+</style>

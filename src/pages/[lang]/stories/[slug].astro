@@ -1,0 +1,238 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { t, type Lang, languages } from '../../../i18n/utils';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const allStories = await getCollection('stories');
+  return allStories.map(story => ({
+    params: { lang: story.data.lang, slug: story.data.storySlug },
+    props: { story },
+  }));
+}
+
+const { story } = Astro.props;
+const lang = Astro.params.lang as Lang;
+const i = t(lang);
+const { Content } = await render(story);
+
+const dateFormatted = story.data.date.toLocaleDateString(
+  lang === 'ru' ? 'ru-RU' : lang === 'pl' ? 'pl-PL' : 'en-US',
+  { year: 'numeric', month: 'long', day: 'numeric' }
+);
+---
+
+<BaseLayout title={story.data.title} lang={lang}>
+  <article class="story">
+    <header class="story-header">
+      <div class="story-tags">
+        {story.data.tags.map(tag => (
+          <span class="story-tag">{tag}</span>
+        ))}
+      </div>
+      <h1>{story.data.title}</h1>
+      {story.data.epigraph && (
+        <div class="story-epigraph">
+          <p>{story.data.epigraph}</p>
+          {story.data.epigraphAuthor && (
+            <cite>— {story.data.epigraphAuthor}</cite>
+          )}
+        </div>
+      )}
+      {story.data.image && (
+        <img class="story-hero-image" src={story.data.image} alt={story.data.title} />
+      )}
+    </header>
+
+    <div class="story-content prose">
+      <Content />
+    </div>
+
+    <footer class="story-footer">
+      <div class="story-meta">
+        <span class="story-date">{dateFormatted}</span>
+        {story.data.location && (
+          <span class="story-location">{story.data.location}</span>
+        )}
+      </div>
+      {story.data.translator && (
+        <div class="story-translator">
+          <span class="translator-label">{i.stories.translatedBy}</span>
+          {story.data.translator.type === 'human' && story.data.translator.email ? (
+            <a href={`mailto:${story.data.translator.email}`} class="translator-name">{story.data.translator.name}</a>
+          ) : (
+            <span class="translator-name">{story.data.translator.name}</span>
+          )}
+          {story.data.translator.type === 'llm' && (
+            <span class="translator-badge">LLM</span>
+          )}
+        </div>
+      )}
+      <a href={`/${lang}/stories`} class="story-back">&larr; {i.stories.title}</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .story {
+    max-width: 65ch;
+  }
+
+  .story-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .story-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .story-tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 0.15em 0.5em;
+  }
+
+  .story-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.6em;
+    letter-spacing: -0.02em;
+  }
+
+  .story-epigraph {
+    margin: 1.5rem 0 2rem;
+    padding-left: 1.2rem;
+    border-left: 2px solid var(--border);
+  }
+
+  .story-epigraph p {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3em;
+    max-width: none;
+  }
+
+  .story-epigraph cite {
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .story-hero-image {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    margin-top: 1.5rem;
+  }
+
+  /* Prose styles for rendered markdown */
+  .prose {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .prose :global(p) {
+    margin-bottom: 1.4em;
+    max-width: none;
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  .prose :global(img) {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+  }
+
+  .prose :global(strong) {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .prose :global(em) {
+    font-family: var(--font-heading);
+  }
+
+  .prose :global(blockquote) {
+    border-left: 2px solid var(--border);
+    padding-left: 1.2rem;
+    margin: 1.5rem 0;
+    font-family: var(--font-heading);
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+
+  /* Footer */
+  .story-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .story-meta {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .story-date, .story-location {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .story-location::before {
+    content: '·';
+    margin-right: 1.5rem;
+  }
+
+  .story-translator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .translator-name { color: var(--text-secondary); }
+  a.translator-name { color: var(--accent); text-decoration: none; }
+  a.translator-name:hover { color: var(--accent-hover); }
+
+  .translator-badge {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--border);
+    padding: 0.1em 0.4em;
+  }
+
+  .story-back {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-top: 0.4rem;
+  }
+
+  @media (max-width: 768px) {
+    .story-header h1 { font-size: 1.8rem; }
+    .story-footer { flex-direction: column; align-items: flex-start; }
+  }
+</style>

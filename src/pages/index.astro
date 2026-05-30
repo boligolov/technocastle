@@ -1,0 +1,18 @@
+---
+---
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script is:inline>
+      (function() {
+        var supported = ['ru', 'pl', 'en'];
+        var fallback = 'ru';
+        var langs = (navigator.languages || [navigator.language || ''])
+          .map(function(l) { return l.split('-')[0].toLowerCase(); });
+        var match = langs.find(function(l) { return supported.indexOf(l) !== -1; });
+        window.location.replace('/' + (match || fallback));
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

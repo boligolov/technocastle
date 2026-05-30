@@ -1,0 +1,190 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { t, type Lang, languages } from '../../../i18n/utils';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const allProjects = await getCollection('projects');
+  return allProjects.map(project => ({
+    params: { lang: project.data.lang, slug: project.data.projectSlug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const lang = Astro.params.lang as Lang;
+const i = t(lang);
+const { Content } = await render(project);
+
+const dateFormatted = project.data.date.toLocaleDateString(
+  lang === 'ru' ? 'ru-RU' : lang === 'pl' ? 'pl-PL' : 'en-US',
+  { year: 'numeric', month: 'long', day: 'numeric' }
+);
+---
+
+<BaseLayout title={project.data.title} lang={lang}>
+  <article class="project">
+    <header class="project-header">
+      <div class="project-tags">
+        {project.data.tags.map(tag => (
+          <span class="project-tag">{tag}</span>
+        ))}
+      </div>
+      <h1>{project.data.title}</h1>
+      {project.data.image && (
+        <img class="project-hero-image" src={project.data.image} alt={project.data.title} />
+      )}
+    </header>
+
+    <div class="project-content prose">
+      <Content />
+    </div>
+
+    <footer class="project-footer">
+      <div class="project-meta">
+        <span class="project-date">{dateFormatted}</span>
+        {project.data.status && (
+          <span class:list={['project-status', project.data.status]}>
+            {project.data.status}
+          </span>
+        )}
+        {project.data.url && (
+          <a href={project.data.url} target="_blank" rel="noopener" class="project-url">{project.data.url}</a>
+        )}
+      </div>
+      <a href={`/${lang}/projects`} class="project-back">&larr; {i.projects.title}</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .project {
+    max-width: 65ch;
+  }
+
+  .project-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .project-tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 0.15em 0.5em;
+  }
+
+  .project-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.6em;
+    letter-spacing: -0.02em;
+  }
+
+  .project-hero-image {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    margin-top: 1.5rem;
+  }
+
+  .prose {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .prose :global(p) {
+    margin-bottom: 1.4em;
+    max-width: none;
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  .prose :global(img) {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+  }
+
+  .prose :global(strong) {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .prose :global(em) {
+    font-family: var(--font-heading);
+  }
+
+  .prose :global(blockquote) {
+    border-left: 2px solid var(--border);
+    padding-left: 1.2rem;
+    margin: 1.5rem 0;
+    font-family: var(--font-heading);
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+
+  .project-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .project-meta {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .project-date {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .project-status {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--border);
+    padding: 0.15em 0.5em;
+    color: var(--text-muted);
+  }
+
+  .project-status.active { color: var(--accent); border-color: var(--accent); }
+  .project-status.planned { color: var(--text-muted); }
+
+  .project-url {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .project-back {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-top: 0.4rem;
+  }
+
+  @media (max-width: 768px) {
+    .project-header h1 { font-size: 1.8rem; }
+  }
+</style>

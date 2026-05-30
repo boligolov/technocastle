@@ -1,0 +1,156 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { t, type Lang, languages } from '../../../i18n/utils';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  return Object.keys(languages).map(lang => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const i = t(lang);
+
+const allBooks = await getCollection('books');
+const books = allBooks
+  .filter(b => b.data.lang === lang)
+  .filter(b => b.data.bookSlug != 'edits') // TODO: Аэра отключена временно
+  .sort((a, b) => b.data.year - a.data.year);
+
+const statusLabel = (s: string) =>
+  s === 'published' ? i.books.published : i.books.inProgress;
+---
+
+<BaseLayout title={i.books.title} lang={lang}>
+  <header class="page-header">
+    <h1>{i.books.title}</h1>
+    <p>{i.books.subtitle}</p>
+  </header>
+
+  <div class="book-list">
+    {books.map(book => (
+      <article class="book-item">
+        <div class="book-cover-col">
+          <a href={`/${lang}/books/${book.data.bookSlug}`}>
+            <img class="book-cover" src={book.data.cover} alt={book.data.title} loading="lazy" />
+          </a>
+          <span class:list={['book-status', { 'in-progress': book.data.status === 'in-progress' }]}>
+            {statusLabel(book.data.status)}
+          </span>
+          {book.data.ageRating && (
+              <span class="book-rating">{book.data.ageRating}</span>
+          )}
+        </div>
+        <div class="book-info">
+          <a href={`/${lang}/books/${book.data.bookSlug}`} class="book-title-link">
+            <h2>{book.data.title}</h2>
+          </a>
+          <span class="book-genre">{book.data.genre} · {book.data.year}</span>
+          <p set:html={book.data.description} class="book-description"></p>
+          {book.data.readMore && <p class="book-read-more">{book.data.readMore}</p>}
+          {!book.data.readMore && <a href={`/${lang}/books/${book.data.bookSlug}`} class="book-read">{i.books.read} &rarr;</a>}
+        </div>
+      </article>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+  .page-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header h1 { margin-bottom: 0.3em; }
+
+  .book-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .book-item {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .book-item:last-child { border-bottom: none; }
+
+  .book-cover-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .book-cover {
+    width: 140px;
+    height: 200px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+  }
+
+  .book-status {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .book-rating {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .book-status.in-progress { color: var(--text-muted); }
+
+  .book-title-link {
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .book-title-link:hover { color: var(--accent); }
+
+  .book-title-link h2 {
+    font-size: 1.35rem;
+    margin-bottom: 0.25em;
+  }
+
+  .book-genre {
+    display: inline-block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    margin-bottom: 0.6rem;
+  }
+
+  .book-info p {
+    font-size: 0.75rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .book-read {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .book-read-more {
+    font-weight: bold;
+  }
+
+  @media (max-width: 768px) {
+    .book-item {
+      grid-template-columns: 100px 1fr;
+      gap: 1rem;
+    }
+    .book-cover { width: 100px; height: 143px; }
+  }
+</style>

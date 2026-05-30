@@ -1,0 +1,190 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { t, type Lang, languages } from '../../../../i18n/utils';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const allBooks = await getCollection('books');
+  return allBooks.map(book => ({
+    params: { lang: book.data.lang, slug: book.data.bookSlug },
+    props: { book },
+  }));
+}
+
+const { book } = Astro.props;
+const lang = Astro.params.lang as Lang;
+const i = t(lang);
+const slug = book.data.bookSlug;
+const { Content } = await render(book);
+---
+
+<BaseLayout title={`${book.data.title} — ${i.books.read}`} lang={lang}>
+  <article class="book-read">
+    <header class="book-read-header">
+      <a href={`/${lang}/books/${slug}`} class="book-read-back">&larr; {book.data.title}</a>
+      <h1>{book.data.title}</h1>
+      {book.data.ageRating && (
+        <span class="book-rating">{book.data.ageRating}</span>
+      )}
+    </header>
+
+    <nav class="book-toc">
+      <ol>
+        {book.data.chapters.map(ch => (
+          <li><a href={`#${ch.id}`}>{ch.title}</a></li>
+        ))}
+      </ol>
+    </nav>
+
+    <div class="book-text prose">
+      <Content />
+    </div>
+
+    <footer class="book-read-footer">
+      <a href={`/${lang}/books/${slug}`}>&larr; {i.books.backToBooks}: {book.data.title}</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .book-read {
+    max-width: 65ch;
+  }
+
+  .book-read-header {
+    margin-bottom: 2rem;
+  }
+
+  .book-read-back {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+
+  .book-read-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.3em;
+    letter-spacing: -0.02em;
+  }
+
+  .book-rating {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    padding: 0.15em 0.5em;
+    color: var(--text-muted);
+  }
+
+  .book-toc {
+    margin-bottom: 2.5rem;
+    padding: 1.2rem 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .book-toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: toc;
+  }
+
+  .book-toc li {
+    counter-increment: toc;
+  }
+
+  .book-toc li a {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.35rem 0;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    transition: color 0.15s;
+  }
+
+  .book-toc li a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    width: 20px;
+  }
+
+  .book-toc li a:hover { color: var(--accent); }
+
+  .prose {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .prose :global(h2) {
+    font-size: 1.5rem;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    scroll-margin-top: 2rem;
+  }
+
+  .prose :global(h2:first-child) {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  .prose :global(p) {
+    margin-bottom: 1.4em;
+    max-width: none;
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  .prose :global(img) {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+  }
+
+  .prose :global(strong) {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .prose :global(em) {
+    font-family: var(--font-heading);
+  }
+
+  .prose :global(blockquote) {
+    border-left: 2px solid var(--border);
+    padding-left: 1.2rem;
+    margin: 1.5rem 0;
+    font-family: var(--font-heading);
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+
+  .book-read-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+
+  @media (max-width: 768px) {
+    .book-read-header h1 { font-size: 1.8rem; }
+  }
+</style>
