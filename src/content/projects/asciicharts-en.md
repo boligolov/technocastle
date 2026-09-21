@@ -9,7 +9,7 @@ status: active
 url: "https://github.com/boligolov/asciicharts"
 ---
 
-ASCII Charts renders charts where images are inconvenient or unavailable: AI-agent replies, terminals and SSH sessions, CI logs, pull-request descriptions, and plain-text documentation. Feed it numbers or CSV and it returns a ready-to-paste monospace string.
+ASCII Charts renders charts using pseudographics, wherever images or multimedia data aren't available. It can be used in AI-agent replies, terminals and SSH sessions, CI logs, pull-request descriptions, and plain-text documents. Feed it numbers or CSV and it returns a ready-to-paste monospace string.
 
 The renderer is written in Python and has no third-party dependencies: its main file can simply be copied into a repository or CI job. Output is deterministic, making charts suitable for Git, readable diffs, and snapshot tests.
 

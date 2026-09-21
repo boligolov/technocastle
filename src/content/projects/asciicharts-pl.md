@@ -9,7 +9,7 @@ status: active
 url: "https://github.com/boligolov/asciicharts"
 ---
 
-ASCII Charts tworzy wykresy tam, gdzie obrazy są niewygodne lub niedostępne: w odpowiedziach agentów AI, terminalach i sesjach SSH, logach CI, opisach pull requestów oraz dokumentacji tekstowej. Przyjmuje liczby lub CSV i zwraca gotowy do wklejenia tekst o stałej szerokości.
+ASCII Charts tworzy wykresy przy użyciu pseudografiki, wszędzie tam, gdzie obrazy lub dane multimedialne są niedostępne. Może być używany w odpowiedziach agentów AI, terminalach i sesjach SSH, logach CI, opisach pull requestów oraz zwykłych dokumentach tekstowych. Przyjmuje liczby lub CSV i zwraca gotowy do wklejenia tekst o stałej szerokości.
 
 Renderer jest napisany w Pythonie i nie wymaga zewnętrznych zależności: główny plik można po prostu skopiować do repozytorium albo zadania CI. Wynik jest deterministyczny, dzięki czemu wykresy nadają się do przechowywania w Git, porównywania w diffach i testów snapshotowych.
 
