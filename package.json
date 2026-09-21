@@ -8,8 +8,8 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/sitemap": "^3.7.2",
-    "astro": "^6.3.6",
+    "@astrojs/sitemap": "^3.7.4",
+    "astro": "^7.3.3",
     "tuicss": "^2.1.2"
   },
   "devDependencies": {
