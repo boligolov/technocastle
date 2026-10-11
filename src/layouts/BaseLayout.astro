@@ -1,17 +1,50 @@
 ---
 import Sidebar from '../components/Sidebar.astro';
 import '../styles/global.css';
-import type { Lang } from '../i18n/utils';
+import { t, switchLangPath, withTrailingSlash, languages, defaultLang, type Lang } from '../i18n/utils';
 
 interface Props {
   title: string;
   description?: string;
   lang: Lang;
+  /** Social preview image, site-relative or absolute */
+  image?: string;
+  ogType?: 'website' | 'article' | 'book';
+  /** Languages this page exists in (defaults to all) */
+  alternateLangs?: Lang[];
+  /** Keep the page out of search indexes */
+  noindex?: boolean;
+  /** schema.org nodes, see utils/schema.ts */
+  jsonLd?: Record<string, unknown>[];
 }
 
-const { title, description = 'TechnoCastle — A writer\'s corner on the web', lang } = Astro.props;
+const {
+  title,
+  lang,
+  image,
+  ogType = 'website',
+  noindex = false,
+  jsonLd = [],
+  alternateLangs = Object.keys(languages) as Lang[],
+} = Astro.props;
+const description = Astro.props.description || t(lang).home.tagline;
 
 const htmlLang = { en: 'en', ru: 'ru', pl: 'pl' }[lang];
+const ogLocales = { en: 'en_US', ru: 'ru_RU', pl: 'pl_PL' };
+
+const fullTitle = `${title} | TechnoCastle`;
+const pathname = withTrailingSlash(Astro.url.pathname);
+const absolute = (path: string) => new URL(path, Astro.site).href;
+const langUrl = (l: Lang) => absolute(switchLangPath(pathname, l));
+
+const canonical = absolute(pathname);
+const isHome = pathname === `/${lang}/`;
+// The site root picks a language for the visitor, so it is the x-default of the home pages
+const xDefault = isHome ? absolute('/') : langUrl(alternateLangs.includes(defaultLang) ? defaultLang : lang);
+const imageUrl = image && absolute(image);
+// Escape "<" so the JSON can't close the script tag
+const jsonLdText = jsonLd.length > 0 &&
+  JSON.stringify({ '@context': 'https://schema.org', '@graph': jsonLd }).replace(/</g, '\\u003c');
 ---
 
 <!doctype html>
@@ -21,7 +54,28 @@ const htmlLang = { en: 'en', ru: 'ru', pl: 'pl' }[lang];
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title} | TechnoCastle</title>
+    <title>{fullTitle}</title>
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    {alternateLangs.map(l => (
+      <link rel="alternate" hreflang={l} href={langUrl(l)} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={xDefault} />
+    <meta property="og:site_name" content="TechnoCastle" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocales[lang]} />
+    {alternateLangs.filter(l => l !== lang).map(l => (
+      <meta property="og:locale:alternate" content={ogLocales[l]} />
+    ))}
+    {imageUrl && <meta property="og:image" content={imageUrl} />}
+    <meta name="twitter:card" content={imageUrl ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {imageUrl && <meta name="twitter:image" content={imageUrl} />}
+    {jsonLdText && <script type="application/ld+json" is:inline set:html={jsonLdText} />}
     <script is:inline>
       (function() {
         const theme = localStorage.getItem('theme') ||
@@ -35,7 +89,7 @@ const htmlLang = { en: 'en', ru: 'ru', pl: 'pl' }[lang];
   </head>
   <body>
     <div class="site-wrapper">
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} alternateLangs={alternateLangs} />
       <main class="main-content">
         <div class="page-content">
           <slot />

@@ -2,7 +2,7 @@
 title: "Revisions"
 description: "..."
 genre: "Fiction"
-cover: "/images/covers/edits.png"
+cover: "../../assets/images/covers/edits.png"
 status: in-progress
 year: 2025
 lang: en

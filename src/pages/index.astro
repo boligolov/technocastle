@@ -1,8 +1,22 @@
 ---
+import { t, languages, defaultLang, type Lang } from '../i18n/utils';
+
+const langEntries = Object.entries(languages) as [Lang, string][];
+const absolute = (path: string) => new URL(path, Astro.site).href;
 ---
-<html>
+<!doctype html>
+<html lang={defaultLang}>
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={t(defaultLang).home.tagline} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>TechnoCastle</title>
+    <link rel="canonical" href={absolute('/')} />
+    {langEntries.map(([code]) => (
+      <link rel="alternate" hreflang={code} href={absolute(`/${code}/`)} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={absolute('/')} />
     <script is:inline>
       (function() {
         var supported = ['ru', 'pl', 'en'];
@@ -10,9 +24,17 @@
         var langs = (navigator.languages || [navigator.language || ''])
           .map(function(l) { return l.split('-')[0].toLowerCase(); });
         var match = langs.find(function(l) { return supported.indexOf(l) !== -1; });
-        window.location.replace('/' + (match || fallback));
+        window.location.replace('/' + (match || fallback) + '/');
       })();
     </script>
   </head>
-  <body></body>
+  <body>
+    <!-- Fallback for crawlers and visitors without JavaScript -->
+    <h1>TechnoCastle</h1>
+    <ul>
+      {langEntries.map(([code, name]) => (
+        <li><a href={`/${code}/`} hreflang={code} lang={code}>{name}</a></li>
+      ))}
+    </ul>
+  </body>
 </html>

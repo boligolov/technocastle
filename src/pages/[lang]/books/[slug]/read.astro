@@ -1,27 +1,44 @@
 ---
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
-import { t, type Lang, languages } from '../../../../i18n/utils';
+import { t, type Lang } from '../../../../i18n/utils';
 import { getCollection, render } from 'astro:content';
+import { metaDescription, socialImage } from '../../../../utils/seo';
+import { isHiddenBook, isReadable } from '../../../../utils/books';
 
 export async function getStaticPaths() {
   const allBooks = await getCollection('books');
-  return allBooks.map(book => ({
+  const readable = allBooks.filter(isReadable);
+  return readable.map(book => ({
     params: { lang: book.data.lang, slug: book.data.bookSlug },
-    props: { book },
+    props: {
+      book,
+      // The text may not be translated yet, so the page may not exist in every language
+      alternateLangs: readable
+        .filter(other => other.data.bookSlug === book.data.bookSlug)
+        .map(other => other.data.lang),
+    },
   }));
 }
 
-const { book } = Astro.props;
+const { book, alternateLangs } = Astro.props;
 const lang = Astro.params.lang as Lang;
 const i = t(lang);
 const slug = book.data.bookSlug;
 const { Content } = await render(book);
 ---
 
-<BaseLayout title={`${book.data.title} — ${i.books.read}`} lang={lang}>
+<BaseLayout
+  title={`${book.data.title} — ${i.books.read}`}
+  description={metaDescription(book.data.description)}
+  image={await socialImage(book.data.cover)}
+  ogType="book"
+  lang={lang}
+  alternateLangs={alternateLangs}
+  noindex={isHiddenBook(book)}
+>
   <article class="book-read">
     <header class="book-read-header">
-      <a href={`/${lang}/books/${slug}`} class="book-read-back">&larr; {book.data.title}</a>
+      <a href={`/${lang}/books/${slug}/`} class="book-read-back">&larr; {book.data.title}</a>
       <h1>{book.data.title}</h1>
       {book.data.ageRating && (
         <span class="book-rating">{book.data.ageRating}</span>
@@ -41,7 +58,7 @@ const { Content } = await render(book);
     </div>
 
     <footer class="book-read-footer">
-      <a href={`/${lang}/books/${slug}`}>&larr; {i.books.backToBooks}: {book.data.title}</a>
+      <a href={`/${lang}/books/${slug}/`}>&larr; {i.books.backToBooks}: {book.data.title}</a>
     </footer>
   </article>
 </BaseLayout>

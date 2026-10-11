@@ -2,6 +2,9 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { t, type Lang, languages } from '../../../i18n/utils';
 import { getCollection } from 'astro:content';
+import { isHiddenBook } from '../../../utils/books';
+import { schema } from '../../../utils/schema';
+import { Image } from 'astro:assets';
 
 export async function getStaticPaths() {
   return Object.keys(languages).map(lang => ({ params: { lang } }));
@@ -13,14 +16,16 @@ const i = t(lang);
 const allBooks = await getCollection('books');
 const books = allBooks
   .filter(b => b.data.lang === lang)
-  .filter(b => b.data.bookSlug != 'edits') // TODO: Аэра отключена временно
+  .filter(b => !isHiddenBook(b))
   .sort((a, b) => b.data.year - a.data.year);
 
 const statusLabel = (s: string) =>
   s === 'published' ? i.books.published : i.books.inProgress;
+
+const jsonLd = [schema(Astro.site, lang).breadcrumbs([{ name: i.books.title, path: `/${lang}/books/` }])];
 ---
 
-<BaseLayout title={i.books.title} lang={lang}>
+<BaseLayout title={i.books.title} description={i.books.subtitle} lang={lang} jsonLd={jsonLd}>
   <header class="page-header">
     <h1>{i.books.title}</h1>
     <p>{i.books.subtitle}</p>
@@ -30,8 +35,8 @@ const statusLabel = (s: string) =>
     {books.map(book => (
       <article class="book-item">
         <div class="book-cover-col">
-          <a href={`/${lang}/books/${book.data.bookSlug}`}>
-            <img class="book-cover" src={book.data.cover} alt={book.data.title} loading="lazy" />
+          <a href={`/${lang}/books/${book.data.bookSlug}/`}>
+            <Image class="book-cover" src={book.data.cover} alt={book.data.title} width={140} densities={[1, 2, 3]} />
           </a>
           <span class:list={['book-status', { 'in-progress': book.data.status === 'in-progress' }]}>
             {statusLabel(book.data.status)}
@@ -41,13 +46,13 @@ const statusLabel = (s: string) =>
           )}
         </div>
         <div class="book-info">
-          <a href={`/${lang}/books/${book.data.bookSlug}`} class="book-title-link">
+          <a href={`/${lang}/books/${book.data.bookSlug}/`} class="book-title-link">
             <h2>{book.data.title}</h2>
           </a>
           <span class="book-genre">{book.data.genre} · {book.data.year}</span>
           <p set:html={book.data.description} class="book-description"></p>
           {book.data.readMore && <p class="book-read-more">{book.data.readMore}</p>}
-          {!book.data.readMore && <a href={`/${lang}/books/${book.data.bookSlug}`} class="book-read">{i.books.read} &rarr;</a>}
+          {!book.data.readMore && <a href={`/${lang}/books/${book.data.bookSlug}/`} class="book-read">{i.books.read} &rarr;</a>}
         </div>
       </article>
     ))}

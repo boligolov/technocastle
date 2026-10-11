@@ -1,4 +1,15 @@
 import { test, expect } from '@playwright/test';
+import { hiddenBookSlugs } from '../src/config/books.mjs';
+import { langs, loadCollection, inLang, chapterIds, translator, isReadable, type Entry } from './content';
+
+// Expectations for content pages come from src/content, see ./content.ts
+const stories = loadCollection('stories');
+const projects = loadCollection('projects');
+const books = loadCollection('books');
+const latest = loadCollection('latest');
+
+const isHidden = (book: Entry) => hiddenBookSlugs.includes(book.data.bookSlug);
+const pageSize = 10;
 
 test.describe('Sidebar', () => {
   test.beforeEach(async ({ page }) => {
@@ -129,7 +140,7 @@ test.describe('Navigation (i18n)', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const bookLink = page.locator('.nav-link', { hasText: 'Books' });
-    await expect(bookLink).toHaveAttribute('href', '/en/books');
+    await expect(bookLink).toHaveAttribute('href', '/en/books/');
   });
 
   test('nav links work for Russian', async ({ page }) => {
@@ -140,7 +151,7 @@ test.describe('Navigation (i18n)', () => {
     expect(h1).toBe('TechnoCastle');
 
     const booksLink = page.locator('.nav-link', { hasText: 'Книги' });
-    await expect(booksLink).toHaveAttribute('href', '/ru/books');
+    await expect(booksLink).toHaveAttribute('href', '/ru/books/');
   });
 
   test('nav links work for Polish', async ({ page }) => {
@@ -148,7 +159,7 @@ test.describe('Navigation (i18n)', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const booksLink = page.locator('.nav-link', { hasText: 'Książki' });
-    await expect(booksLink).toHaveAttribute('href', '/pl/books');
+    await expect(booksLink).toHaveAttribute('href', '/pl/books/');
   });
 });
 
@@ -226,325 +237,256 @@ test.describe('Language switcher', () => {
 });
 
 test.describe('Stories', () => {
-  test('stories list page loads and shows story items', async ({ page }) => {
-    await page.goto('/ru/stories');
-    await page.waitForLoadState('domcontentloaded');
-    const h1 = await page.locator('.page-content h1').textContent();
-    expect(h1).toBe('Рассказы');
-    const items = page.locator('.story-item');
-    const count = await items.count();
-    expect(count).toBe(5);
-  });
-
-  test('stories list shows for all languages', async ({ page }) => {
-    for (const lang of ['en', 'pl']) {
-      const res = await page.goto(`/${lang}/stories`);
+  for (const lang of langs) {
+    test(`/${lang}/stories lists every story`, async ({ page }) => {
+      const res = await page.goto(`/${lang}/stories/`);
       expect(res!.status()).toBe(200);
-      const items = page.locator('.story-item');
-      const count = await items.count();
-      expect(count).toBe(5);
-    }
-  });
+      await expect(page.locator('.story-item')).toHaveCount(inLang(stories, lang).length);
+    });
+  }
 
   test('story item links to individual story page', async ({ page }) => {
-    await page.goto('/en/stories');
+    await page.goto('/en/stories/');
+    await page.locator('.story-title-link').first().click();
     await page.waitForLoadState('domcontentloaded');
-    const firstLink = page.locator('.story-title-link').first();
-    await firstLink.click();
-    await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/en\/stories\/[a-z-]+/);
+    expect(page.url()).toMatch(/\/en\/stories\/[a-z-]+\/$/);
   });
 
-  test('individual story page has title, content, and footer', async ({ page }) => {
-    await page.goto('/ru/stories/signal-noise');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-header h1')).toHaveText('Сигнал/Шум');
-    await expect(page.locator('.story-content')).toBeVisible();
-    await expect(page.locator('.story-footer')).toBeVisible();
-    await expect(page.locator('.story-date')).toBeVisible();
-    await expect(page.locator('.story-location')).toBeVisible();
-  });
+  for (const story of stories) {
+    const url = `/${story.lang}/stories/${story.data.storySlug}/`;
 
-  test('story with epigraph shows epigraph block', async ({ page }) => {
-    await page.goto('/en/stories/signal-noise');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-epigraph')).toBeVisible();
-    await expect(page.locator('.story-epigraph cite')).toContainText('TechnoCastle');
-  });
+    test(`${url} shows title, text and footer`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('.story-header h1')).toHaveText(story.data.title);
+      await expect(page.locator('.story-content')).toBeVisible();
+      await expect(page.locator('.story-footer')).toBeVisible();
+      await expect(page.locator('.story-date')).toBeVisible();
+      if (story.data.location) {
+        await expect(page.locator('.story-location')).toHaveText(story.data.location);
+      } else {
+        await expect(page.locator('.story-location')).toHaveCount(0);
+      }
+    });
 
-  test('story without epigraph has no epigraph block', async ({ page }) => {
-    await page.goto('/en/stories/cartographers-confession');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-epigraph')).toHaveCount(0);
-  });
+    test(`${url} shows epigraph and hero image only when set`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('.story-epigraph')).toHaveCount(story.data.epigraph ? 1 : 0);
+      await expect(page.locator('.story-hero-image')).toHaveCount(story.data.image ? 1 : 0);
+    });
 
-  test('story with image shows hero image', async ({ page }) => {
-    await page.goto('/ru/stories/signal-noise');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-hero-image')).toBeVisible();
-  });
+    test(`${url} credits the translator only when there is one`, async ({ page }) => {
+      await page.goto(url);
+      const credit = translator(story);
+      if (!credit) {
+        await expect(page.locator('.story-translator')).toHaveCount(0);
+        return;
+      }
+      await expect(page.locator('.story-translator')).toBeVisible();
+      await expect(page.locator('.translator-name')).toContainText(credit.name);
+      await expect(page.locator('.translator-badge')).toHaveCount(credit.type === 'llm' ? 1 : 0);
+      if (credit.type === 'human' && credit.email) {
+        await expect(page.locator('a.translator-name')).toHaveAttribute('href', `mailto:${credit.email}`);
+      }
+    });
+  }
 
   test('back link on story page goes to stories list', async ({ page }) => {
-    await page.goto('/pl/stories/typed-words');
-    await page.waitForLoadState('domcontentloaded');
+    const story = inLang(stories, 'pl')[0];
+    await page.goto(`/pl/stories/${story.data.storySlug}/`);
     await page.locator('.story-back').click();
     await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/pl\/stories\/?$/);
-  });
-
-  test('story footer shows date and location', async ({ page }) => {
-    await page.goto('/en/stories/loop-condition');
-    await page.waitForLoadState('domcontentloaded');
-    const date = await page.locator('.story-date').textContent();
-    expect(date).toBeTruthy();
-    const location = await page.locator('.story-location').textContent();
-    expect(location).toContain('Berlin');
-  });
-
-  test('translated story shows LLM translator with badge', async ({ page }) => {
-    await page.goto('/en/stories/signal-noise');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-translator')).toBeVisible();
-    await expect(page.locator('.translator-name')).toContainText('Claude');
-    await expect(page.locator('.translator-badge')).toHaveText('LLM');
-  });
-
-  test('translated story shows human translator with email link', async ({ page }) => {
-    await page.goto('/pl/stories/cartographers-confession');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-translator')).toBeVisible();
-    const link = page.locator('a.translator-name');
-    await expect(link).toBeVisible();
-    const href = await link.getAttribute('href');
-    expect(href).toMatch(/^mailto:/);
-  });
-
-  test('original (ru) story has no translator block', async ({ page }) => {
-    await page.goto('/ru/stories/signal-noise');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.story-translator')).toHaveCount(0);
+    expect(page.url()).toMatch(/\/pl\/stories\/$/);
   });
 });
 
 test.describe('Projects', () => {
-  test('projects list page shows 4 projects', async ({ page }) => {
-    await page.goto('/ru/projects');
-    await page.waitForLoadState('domcontentloaded');
-    const h1 = await page.locator('.page-content h1').textContent();
-    expect(h1).toBe('Проекты');
-    const items = page.locator('.project-item');
-    await expect(items).toHaveCount(4);
-  });
-
-  test('projects list shows for all languages', async ({ page }) => {
-    for (const lang of ['en', 'pl']) {
-      const res = await page.goto(`/${lang}/projects`);
+  for (const lang of langs) {
+    test(`/${lang}/projects lists every project`, async ({ page }) => {
+      const res = await page.goto(`/${lang}/projects/`);
       expect(res!.status()).toBe(200);
-      await expect(page.locator('.project-item')).toHaveCount(4);
-    }
-  });
+      await expect(page.locator('.project-item')).toHaveCount(inLang(projects, lang).length);
+    });
+  }
 
   test('project item links to individual project page', async ({ page }) => {
-    await page.goto('/en/projects');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/en/projects/');
     await page.locator('.project-title-link').first().click();
     await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/en\/projects\/[a-z-]+$/);
+    expect(page.url()).toMatch(/\/en\/projects\/[a-z-]+\/$/);
   });
 
-  test('individual project page has title, content, and footer', async ({ page }) => {
-    await page.goto('/ru/projects/worldbuilding-engine');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.project-header h1')).toContainText('Движок миростроения');
-    await expect(page.locator('.project-content')).toBeVisible();
-    await expect(page.locator('.project-footer')).toBeVisible();
-  });
+  for (const project of projects) {
+    const url = `/${project.lang}/projects/${project.data.projectSlug}/`;
 
-  test('project with image shows hero image', async ({ page }) => {
-    await page.goto('/en/projects/syntax-garden');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.project-hero-image')).toBeVisible();
-  });
+    test(`${url} shows title, text and footer`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('.project-header h1')).toHaveText(project.data.title);
+      await expect(page.locator('.project-content')).toBeVisible();
+      await expect(page.locator('.project-footer')).toBeVisible();
+      await expect(page.locator('.project-date')).toBeVisible();
+    });
 
-  test('project without image has no hero image', async ({ page }) => {
-    await page.goto('/en/projects/marginalia');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.project-hero-image')).toHaveCount(0);
-  });
+    test(`${url} shows image, status and link only when set`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('.project-hero-image')).toHaveCount(project.data.image ? 1 : 0);
+      await expect(page.locator('.project-status')).toHaveCount(project.data.status ? 1 : 0);
+      if (project.data.url) {
+        await expect(page.locator('.project-url')).toHaveAttribute('href', project.data.url);
+      } else {
+        await expect(page.locator('.project-url')).toHaveCount(0);
+      }
+    });
+  }
 
   test('back link goes to projects list', async ({ page }) => {
-    await page.goto('/pl/projects/dialogue-machine');
-    await page.waitForLoadState('domcontentloaded');
+    const project = inLang(projects, 'pl')[0];
+    await page.goto(`/pl/projects/${project.data.projectSlug}/`);
     await page.locator('.project-back').click();
     await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/pl\/projects\/?$/);
-  });
-
-  test('project footer shows date and status', async ({ page }) => {
-    await page.goto('/en/projects/worldbuilding-engine');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.project-date')).toBeVisible();
-    await expect(page.locator('.project-status')).toBeVisible();
-  });
-
-  test('project with URL shows link', async ({ page }) => {
-    await page.goto('/en/projects/worldbuilding-engine');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.project-url')).toBeVisible();
+    expect(page.url()).toMatch(/\/pl\/projects\/$/);
   });
 });
 
 test.describe('Books', () => {
-  test('books list page shows 3 books with covers', async ({ page }) => {
-    await page.goto('/ru/books');
-    await page.waitForLoadState('domcontentloaded');
-    const items = page.locator('.book-item');
-    await expect(items).toHaveCount(3);
-    const covers = page.locator('.book-cover');
-    await expect(covers).toHaveCount(3);
-  });
-
-  test('books list shows for all languages', async ({ page }) => {
-    for (const lang of ['en', 'pl']) {
-      const res = await page.goto(`/${lang}/books`);
+  for (const lang of langs) {
+    test(`/${lang}/books lists every book that is not hidden, with covers`, async ({ page }) => {
+      const res = await page.goto(`/${lang}/books/`);
       expect(res!.status()).toBe(200);
-      await expect(page.locator('.book-item')).toHaveCount(3);
-    }
-  });
+      const visible = inLang(books, lang).filter(book => !isHidden(book));
+      await expect(page.locator('.book-item')).toHaveCount(visible.length);
+      await expect(page.locator('.book-cover')).toHaveCount(visible.length);
+    });
+  }
 
   test('book list item links to book info page', async ({ page }) => {
-    await page.goto('/en/books');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/en/books/');
     await page.locator('.book-title-link').first().click();
     await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/en\/books\/[a-z-]+$/);
-  });
-
-  test('book info page has cover, title, rating, description, chapters', async ({ page }) => {
-    await page.goto('/ru/books/obsidian-gate');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.book-cover')).toBeVisible();
-    await expect(page.locator('.book-right h1')).toContainText('Обсидиановые врата');
-    await expect(page.locator('.book-rating')).toHaveText('16+');
-    await expect(page.locator('.book-description')).toBeVisible();
-    await expect(page.locator('.chapter-list li')).toHaveCount(5);
-  });
-
-  test('chapter links point to read page with anchors', async ({ page }) => {
-    await page.goto('/en/books/cartography-of-silence');
-    await page.waitForLoadState('domcontentloaded');
-    const firstChapterLink = page.locator('.chapter-list li a').first();
-    const href = await firstChapterLink.getAttribute('href');
-    expect(href).toMatch(/\/en\/books\/cartography-of-silence\/read#ch-1$/);
-  });
-
-  test('book read page loads and has chapter headings with IDs', async ({ page }) => {
-    await page.goto('/en/books/cartography-of-silence/read');
-    await page.waitForLoadState('domcontentloaded');
-    const h2s = page.locator('.book-text h2[id^="ch-"]');
-    const count = await h2s.count();
-    expect(count).toBe(4);
-  });
-
-  test('anchor navigation works on read page', async ({ page }) => {
-    await page.goto('/en/books/obsidian-gate/read#ch-3');
-    await page.waitForLoadState('domcontentloaded');
-    const ch3 = page.locator('#ch-3');
-    await expect(ch3).toBeVisible();
+    expect(page.url()).toMatch(/\/en\/books\/[a-z-]+\/$/);
   });
 
   test('in-progress book shows correct status', async ({ page }) => {
-    await page.goto('/ru/books');
-    await page.waitForLoadState('domcontentloaded');
-    const inProgressStatus = page.locator('.book-status.in-progress');
-    await expect(inProgressStatus.first()).toBeVisible();
+    const inProgress = inLang(books, 'ru').filter(book => !isHidden(book) && book.data.status === 'in-progress');
+    await page.goto('/ru/books/');
+    await expect(page.locator('.book-status.in-progress')).toHaveCount(inProgress.length);
   });
 
+  for (const book of books) {
+    const url = `/${book.lang}/books/${book.data.bookSlug}/`;
+    const chapters = chapterIds(book);
+
+    test(`${url} shows cover, title, rating and description`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('.book-cover')).toBeVisible();
+      await expect(page.locator('.book-right h1')).toHaveText(book.data.title);
+      await expect(page.locator('.book-description')).toBeVisible();
+      if (book.data.ageRating) {
+        await expect(page.locator('.book-rating')).toHaveText(book.data.ageRating);
+      } else {
+        await expect(page.locator('.book-rating')).toHaveCount(0);
+      }
+    });
+
+    test(`${url} is noindex only when the book is hidden`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('meta[name="robots"][content="noindex"]')).toHaveCount(isHidden(book) ? 1 : 0);
+    });
+
+    if (isReadable(book)) {
+      test(`${url} links every chapter to the reading page`, async ({ page }) => {
+        await page.goto(url);
+        await expect(page.locator('.book-read-btn')).toHaveAttribute('href', `${url}read/`);
+        const links = page.locator('.chapter-list li a');
+        await expect(links).toHaveCount(chapters.length);
+        for (const [idx, id] of chapters.entries()) {
+          await expect(links.nth(idx)).toHaveAttribute('href', `${url}read/#${id}`);
+        }
+      });
+
+      test(`${url}read/ has a heading for every chapter anchor`, async ({ page }) => {
+        const res = await page.goto(`${url}read/`);
+        expect(res!.status()).toBe(200);
+        for (const id of chapters) {
+          await expect(page.locator(`.book-text [id="${id}"]`), `chapter anchor #${id}`).toHaveCount(1);
+        }
+      });
+    } else {
+      test(`${url} has no reading page while the text is missing`, async ({ page }) => {
+        await page.goto(url);
+        await expect(page.locator('.book-read-btn')).toHaveCount(0);
+        await expect(page.locator('.chapter-list')).toHaveCount(0);
+        if (book.data.readMore) {
+          await expect(page.locator('.book-read-more')).toHaveText(book.data.readMore);
+        }
+        const res = await page.goto(`${url}read/`);
+        expect(res!.status()).toBe(404);
+      });
+    }
+  }
+
   test('back link on book info page goes to books list', async ({ page }) => {
-    await page.goto('/pl/books/recursion-protocol');
-    await page.waitForLoadState('domcontentloaded');
+    const book = inLang(books, 'pl')[0];
+    await page.goto(`/pl/books/${book.data.bookSlug}/`);
     await page.locator('.book-back').click();
     await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/pl\/books\/?$/);
+    expect(page.url()).toMatch(/\/pl\/books\/$/);
   });
 });
 
-test.describe('Pagination', () => {
-  test('page 1 shows 10 cards', async ({ page }) => {
-    await page.goto('/ru');
-    await page.waitForLoadState('domcontentloaded');
-    const cards = page.locator('.card');
-    await expect(cards).toHaveCount(10);
-  });
+test.describe('Latest and pagination', () => {
+  for (const lang of langs) {
+    const items = inLang(latest, lang);
+    const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
 
-  test('page 2 exists and shows remaining cards', async ({ page }) => {
-    const res = await page.goto('/ru/2');
-    expect(res!.status()).toBe(200);
-    const cards = page.locator('.card');
-    const count = await cards.count();
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(10);
-  });
+    test(`/${lang} shows the first page of cards under the hero`, async ({ page }) => {
+      await page.goto(`/${lang}/`);
+      await expect(page.locator('.hero')).toBeVisible();
+      await expect(page.locator('.card')).toHaveCount(Math.min(items.length, pageSize));
+    });
 
-  test('pagination nav is visible', async ({ page }) => {
-    await page.goto('/ru');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.pagination')).toBeVisible();
-  });
+    test(`/${lang} cards are sorted by date (newest first)`, async ({ page }) => {
+      const newestDate = items.map(item => item.data.date).sort().at(-1);
+      // Several items may share the newest date, any of them may come first
+      const newestTitles = items.filter(item => item.data.date === newestDate).map(item => item.data.title);
+      await page.goto(`/${lang}/`);
+      const firstTitle = await page.locator('.card h3').first().textContent();
+      expect(newestTitles).toContain(firstTitle);
+    });
 
-  test('next link on page 1 goes to page 2', async ({ page }) => {
-    await page.goto('/ru');
-    await page.waitForLoadState('domcontentloaded');
-    const next = page.locator('.pagination-link.next');
-    await expect(next).not.toHaveClass(/disabled/);
-    await next.click();
-    await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toContain('/ru/2');
-  });
+    if (pageCount > 1) {
+      test(`/${lang} next link goes to page 2 and prev link comes back`, async ({ page }) => {
+        await page.goto(`/${lang}/`);
+        await expect(page.locator('.pagination')).toBeVisible();
+        await page.locator('a.pagination-link.next').click();
+        await page.waitForLoadState('domcontentloaded');
+        expect(page.url()).toMatch(new RegExp(`/${lang}/2/$`));
 
-  test('prev link on page 2 goes back to page 1', async ({ page }) => {
-    await page.goto('/ru/2');
-    await page.waitForLoadState('domcontentloaded');
-    const prev = page.locator('.pagination-link.prev');
-    await expect(prev).not.toHaveClass(/disabled/);
-    await prev.click();
-    await page.waitForLoadState('domcontentloaded');
-    expect(page.url()).toMatch(/\/ru\/?$/);
-  });
+        await page.locator('a.pagination-link.prev').click();
+        await page.waitForLoadState('domcontentloaded');
+        expect(page.url()).toMatch(new RegExp(`/${lang}/$`));
+      });
 
-  test('hero section only on page 1', async ({ page }) => {
-    await page.goto('/ru');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.hero')).toBeVisible();
-
-    await page.goto('/ru/2');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.hero')).toHaveCount(0);
-  });
-
-  test('cards are sorted by date (newest first)', async ({ page }) => {
-    await page.goto('/en');
-    await page.waitForLoadState('domcontentloaded');
-    const firstTitle = await page.locator('.card h3').first().textContent();
-    expect(firstTitle).toBe('The Obsidian Gate');
-  });
-
-  test('pagination works for all languages', async ({ page }) => {
-    for (const lang of ['en', 'pl']) {
-      const res = await page.goto(`/${lang}/2`);
-      expect(res!.status()).toBe(200);
-      const cards = await page.locator('.card').count();
-      expect(cards).toBeGreaterThan(0);
+      test(`/${lang}/2 shows the next cards without the hero`, async ({ page }) => {
+        const res = await page.goto(`/${lang}/2/`);
+        expect(res!.status()).toBe(200);
+        await expect(page.locator('.hero')).toHaveCount(0);
+        await expect(page.locator('.card')).toHaveCount(Math.min(items.length - pageSize, pageSize));
+      });
+    } else {
+      test(`/${lang} has no pagination while everything fits on one page`, async ({ page }) => {
+        await page.goto(`/${lang}/`);
+        await expect(page.locator('.pagination')).toHaveCount(0);
+        const res = await page.goto(`/${lang}/2/`);
+        expect(res!.status()).toBe(404);
+      });
     }
-  });
+  }
 
   test('card image appears on the right', async ({ page }) => {
-    await page.goto('/en');
-    await page.waitForLoadState('domcontentloaded');
-    const img = page.locator('.card-image').first();
-    if (await img.count() > 0) {
-      const order = await img.evaluate(el => getComputedStyle(el).order);
-      expect(order).toBe('1');
-    }
+    const withImage = latest.find(item => item.data.image);
+    test.skip(!withImage, 'no news item has an image');
+    await page.goto(`/${withImage!.lang}/`);
+    const order = await page.locator('.card-image').first().evaluate(el => getComputedStyle(el).order);
+    expect(order).toBe('1');
   });
 });

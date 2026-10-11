@@ -1,0 +1,70 @@
+---
+import '../styles/global.css';
+import { languages, defaultLang, type Lang } from '../i18n/utils';
+
+const messages: Record<Lang, { text: string; home: string }> = {
+  ru: { text: 'Страница не найдена', home: 'На главную' },
+  pl: { text: 'Nie znaleziono strony', home: 'Strona główna' },
+  en: { text: 'Page not found', home: 'Home' },
+};
+const langs = Object.keys(languages) as Lang[];
+---
+<!doctype html>
+<html lang={defaultLang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>404 | TechnoCastle</title>
+    <script is:inline>
+      (function() {
+        const theme = localStorage.getItem('theme') ||
+          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+  </head>
+  <body>
+    <main class="not-found">
+      <h1>404</h1>
+      <ul>
+        {langs.map(l => (
+          <li lang={l}>
+            {messages[l].text} — <a href={`/${l}/`}>{messages[l].home} &rarr;</a>
+          </li>
+        ))}
+      </ul>
+    </main>
+  </body>
+</html>
+
+<style>
+  .not-found {
+    max-width: 62ch;
+    margin: 0 auto;
+    padding: 20vh 1.5rem 0;
+  }
+
+  .not-found h1 {
+    font-size: 4rem;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.4em;
+  }
+
+  .not-found ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .not-found li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .not-found li:last-child {
+    border-bottom: none;
+  }
+</style>

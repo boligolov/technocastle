@@ -1,13 +1,15 @@
 ---
-import { t, localizedPath, switchLangPath, languages, type Lang } from '../i18n/utils';
+import { t, localizedPath, switchLangPath, withTrailingSlash, languages, type Lang } from '../i18n/utils';
 
 interface Props {
   lang: Lang;
+  /** Languages the current page exists in (defaults to all) */
+  alternateLangs?: Lang[];
 }
 
-const { lang } = Astro.props;
+const { lang, alternateLangs } = Astro.props;
 const i = t(lang);
-const currentPath = Astro.url.pathname;
+const currentPath = withTrailingSlash(Astro.url.pathname);
 
 const navItems = [
   { href: localizedPath(lang, '/'), label: i.nav.home, hex: '0x0' },
@@ -18,6 +20,11 @@ const navItems = [
 ];
 
 const langEntries = Object.entries(languages) as [Lang, string][];
+
+// Where the page has no version in a language, the switcher leads one level up
+const parentPath = currentPath.replace(/[^/]+\/$/, '');
+const langHref = (code: Lang) =>
+  switchLangPath(!alternateLangs || alternateLangs.includes(code) ? currentPath : parentPath, code);
 ---
 
 <aside class="sidebar" id="sidebar">
@@ -31,7 +38,7 @@ const langEntries = Object.entries(languages) as [Lang, string][];
         <>
           {idx > 0 && <span class="lang-sep">|</span>}
           <a
-            href={switchLangPath(currentPath, code)}
+            href={langHref(code)}
             class:list={['lang-btn', { active: code === lang }]}
           >{code.toUpperCase()}</a>
         </>
@@ -45,7 +52,6 @@ const langEntries = Object.entries(languages) as [Lang, string][];
         href={item.href}
         class:list={['nav-link', {
           active: currentPath === item.href ||
-            currentPath === item.href + '/' ||
             (item.href !== localizedPath(lang, '/') && currentPath.startsWith(item.href))
         }]}
       >

@@ -2,20 +2,20 @@
 title: "Хозяин замка"
 description: "Граф Фанлаф — маг, строящий свой мир на далёкой планете, где его находит Человечество, освоившее гиперпространественные технологии. Графу предстоит выпроводить незваных гостей, уверенных, что нашли Ад и его Хозяина."
 genre: "Фантастика"
-cover: "/images/covers/owner-of-the-castle.png"
+cover: "../../assets/images/covers/owner-of-the-castle.png"
 status: in-progress
 year: 2024
 lang: ru
 bookSlug: "owner-of-the-castle"
 chapters: [
   {
-    id: "1",
+    id: "chapter-1",
     title: "Гости",
   }
 ]
 ---
 
-## Гости
+<h2 id="chapter-1">Гости</h2>
 
 \- Откуда они лезут? - граф, оперевшись на серый кирпич внешней стены замка, смотрел на подползающий ко рву танк.
 

@@ -4,11 +4,11 @@ import { z } from 'astro/zod';
 
 const latest = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/latest' }),
-  schema: z.object({
+  schema: ({ image }) => z.object({
     title: z.string(),
     description: z.string(),
     tags: z.array(z.string()),
-    image: z.string().optional(),
+    image: image().optional(),
     link: z.string(),
     lang: z.enum(['ru', 'pl', 'en']),
     date: z.coerce.date(),
@@ -17,11 +17,11 @@ const latest = defineCollection({
 
 const stories = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/stories' }),
-  schema: z.object({
+  schema: ({ image }) => z.object({
     title: z.string(),
     description: z.string(),
     tags: z.array(z.string()),
-    image: z.string().optional(),
+    image: image().optional(),
     epigraph: z.string().optional(),
     epigraphAuthor: z.string().optional(),
     lang: z.enum(['ru', 'pl', 'en']),
@@ -38,12 +38,12 @@ const stories = defineCollection({
 
 const books = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/books' }),
-  schema: z.object({
+  schema: ({ image }) => z.object({
     title: z.string(),
     description: z.string(),
     readMore: z.string().optional(),
     genre: z.string(),
-    cover: z.string(),
+    cover: image(),
     ageRating: z.string().optional(),
     status: z.enum(['published', 'in-progress']),
     year: z.number(),
@@ -58,11 +58,11 @@ const books = defineCollection({
 
 const projects = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/projects' }),
-  schema: z.object({
+  schema: ({ image }) => z.object({
     title: z.string(),
     description: z.string(),
     tags: z.array(z.string()),
-    image: z.string().optional(),
+    image: image().optional(),
     lang: z.enum(['ru', 'pl', 'en']),
     date: z.coerce.date(),
     projectSlug: z.string(),

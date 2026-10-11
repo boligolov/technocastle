@@ -2,7 +2,7 @@
 title: "Spotkać świt"
 description: ""
 tags: ["Fantastyka"]
-image: "/images/stories/meet-the-dawn.png"
+image: "../../assets/images/stories/meet-the-dawn.png"
 epigraph: ""
 epigraphAuthor: ""
 date: "2020-11-25"

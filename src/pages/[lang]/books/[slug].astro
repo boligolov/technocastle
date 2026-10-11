@@ -1,7 +1,11 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { t, type Lang, languages } from '../../../i18n/utils';
+import { t, type Lang } from '../../../i18n/utils';
 import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
+import { metaDescription, socialImage } from '../../../utils/seo';
+import { isHiddenBook, isReadable } from '../../../utils/books';
+import { schema } from '../../../utils/schema';
 
 export async function getStaticPaths() {
   const allBooks = await getCollection('books');
@@ -15,16 +19,45 @@ const { book } = Astro.props;
 const lang = Astro.params.lang as Lang;
 const i = t(lang);
 const slug = book.data.bookSlug;
+const path = `/${lang}/books/${slug}/`;
+const readable = isReadable(book);
+
+const description = metaDescription(book.data.description);
+const image = await socialImage(book.data.cover);
+
+const ld = schema(Astro.site, lang);
+const jsonLd = [
+  ld.book({
+    path, description, image,
+    title: book.data.title,
+    genre: book.data.genre,
+    year: book.data.year,
+    ageRating: book.data.ageRating,
+  }),
+  ld.author(),
+  ld.breadcrumbs([
+    { name: i.books.title, path: `/${lang}/books/` },
+    { name: book.data.title, path },
+  ]),
+];
 
 const statusLabel = book.data.status === 'published'
   ? i.books.published : i.books.inProgress;
 ---
 
-<BaseLayout title={book.data.title} lang={lang}>
+<BaseLayout
+  title={book.data.title}
+  description={description}
+  image={image}
+  ogType="book"
+  lang={lang}
+  noindex={isHiddenBook(book)}
+  jsonLd={jsonLd}
+>
   <article class="book-page">
     <div class="book-layout">
       <div class="book-left">
-        <img class="book-cover" src={book.data.cover} alt={book.data.title} />
+        <Image class="book-cover" src={book.data.cover} alt={book.data.title} width={220} densities={[1, 2, 3]} loading="eager" />
         <span class:list={['book-status', { 'in-progress': book.data.status === 'in-progress' }]}>
           {statusLabel}
         </span>
@@ -40,22 +73,25 @@ const statusLabel = book.data.status === 'published'
         <h1>{book.data.title}</h1>
         <p class="book-description" set:html={book.data.description}></p>
 
-        <div class="book-chapters">
-          <h3>{i.books.chapters}</h3>
-          <ol class="chapter-list">
-            {book.data.chapters.map(ch => (
-              <li>
-                <a href={`/${lang}/books/${slug}/read#${ch.id}`}>{ch.title}</a>
-              </li>
-            ))}
-          </ol>
-        </div>
+        {readable && book.data.chapters.length > 0 && (
+          <div class="book-chapters">
+            <h3>{i.books.chapters}</h3>
+            <ol class="chapter-list">
+              {book.data.chapters.map(ch => (
+                <li>
+                  <a href={`${path}read/#${ch.id}`}>{ch.title}</a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
-        <a href={`/${lang}/books/${slug}/read`} class="book-read-btn">{i.books.read} &rarr;</a>
+        {readable && <a href={`${path}read/`} class="book-read-btn">{i.books.read} &rarr;</a>}
+        {book.data.readMore && <p class="book-read-more">{book.data.readMore}</p>}
       </div>
     </div>
 
-    <a href={`/${lang}/books`} class="book-back">&larr; {i.books.backToBooks}</a>
+    <a href={`/${lang}/books/`} class="book-back">&larr; {i.books.backToBooks}</a>
   </article>
 </BaseLayout>
 
@@ -185,6 +221,12 @@ const statusLabel = book.data.status === 'published'
     display: inline-block;
     font-size: 0.9rem;
     font-weight: 600;
+  }
+
+  .book-read-more {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
 
   .book-back {

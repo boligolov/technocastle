@@ -2,7 +2,7 @@
 title: "Poprawki"
 description: "..."
 genre: "Fantastyka"
-cover: "/images/covers/edits.png"
+cover: "../../assets/images/covers/edits.png"
 status: in-progress
 year: 2025
 lang: pl

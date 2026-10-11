@@ -1,11 +1,19 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { t, type Lang, languages } from '../../i18n/utils';
-import { getCollection } from 'astro:content';
+import { t, internalHref, withTrailingSlash, type Lang, languages } from '../../i18n/utils';
+import { schema } from '../../utils/schema';
+import { getCollection, type CollectionEntry } from 'astro:content';
+import type { GetStaticPathsOptions, Page } from 'astro';
+import { Image } from 'astro:assets';
 
-export async function getStaticPaths({ paginate }: { paginate: Function }) {
+export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
   const allItems = await getCollection('latest');
   const langs = Object.keys(languages) as Lang[];
+  const pageSize = 10;
+  // Page counts per language: a paginated page may not exist in every language
+  const pageCounts = Object.fromEntries(langs.map(l => [
+    l, Math.max(1, Math.ceil(allItems.filter(item => item.data.lang === l).length / pageSize)),
+  ]));
 
   return langs.flatMap(lang => {
     const filtered = allItems
@@ -14,21 +22,33 @@ export async function getStaticPaths({ paginate }: { paginate: Function }) {
 
     return paginate(filtered, {
       params: { lang },
-      pageSize: 10,
+      props: { pageCounts },
+      pageSize,
     });
   });
 }
 
-const { page } = Astro.props;
+interface Props {
+  page: Page<CollectionEntry<'latest'>>;
+  pageCounts: Record<Lang, number>;
+}
+
+const { page, pageCounts } = Astro.props;
 const lang = Astro.params.lang as Lang;
 const i = t(lang);
 
 const pageLabel = i.home.pageOf
   .replace('{current}', String(page.currentPage))
   .replace('{total}', String(page.lastPage));
+
+const alternateLangs = (Object.keys(languages) as Lang[])
+  .filter(l => pageCounts[l] >= page.currentPage);
+
+const ld = schema(Astro.site, lang);
+const jsonLd = page.currentPage === 1 ? [ld.website(), ld.author()] : [];
 ---
 
-<BaseLayout title={page.currentPage === 1 ? i.nav.home : `${i.home.latest} — ${pageLabel}`} lang={lang}>
+<BaseLayout title={page.currentPage === 1 ? i.nav.home : `${i.home.latest} — ${pageLabel}`} lang={lang} alternateLangs={alternateLangs} jsonLd={jsonLd}>
   {page.currentPage === 1 && (
     <section class="hero">
       {i.home.greeting && <p class="hero-greeting">{i.home.greeting}</p>}
@@ -50,10 +70,10 @@ const pageLabel = i.home.pageOf
             </div>
             <h3>{item.data.title}</h3>
             <p>{item.data.description}</p>
-            <a href={item.data.link} class="card-link">{i.home.readMore} &rarr;</a>
+            <a href={internalHref(item.data.link)} class="card-link">{i.home.readMore} &rarr;</a>
           </div>
           {item.data.image && (
-            <img class="card-image" src={item.data.image} alt={item.data.title} loading="lazy" />
+            <Image class="card-image" src={item.data.image} alt={item.data.title} widths={[160, 320, 480, 800]} sizes="(max-width: 768px) 100vw, 160px" />
           )}
         </article>
       ))}
@@ -62,13 +82,13 @@ const pageLabel = i.home.pageOf
     {page.lastPage > 1 && (
       <nav class="pagination">
         {page.url.prev ? (
-          <a href={page.url.prev} class="pagination-link prev">&larr; {i.home.prevPage}</a>
+          <a href={withTrailingSlash(page.url.prev)} class="pagination-link prev">&larr; {i.home.prevPage}</a>
         ) : (
           <span class="pagination-link prev disabled">&larr; {i.home.prevPage}</span>
         )}
         <span class="pagination-current">{pageLabel}</span>
         {page.url.next ? (
-          <a href={page.url.next} class="pagination-link next">{i.home.nextPage} &rarr;</a>
+          <a href={withTrailingSlash(page.url.next)} class="pagination-link next">{i.home.nextPage} &rarr;</a>
         ) : (
           <span class="pagination-link next disabled">{i.home.nextPage} &rarr;</span>
         )}

@@ -1,11 +1,19 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { t, type Lang, languages } from '../../../i18n/utils';
-import { getCollection } from 'astro:content';
+import { t, withTrailingSlash, type Lang, languages } from '../../../i18n/utils';
+import { schema } from '../../../utils/schema';
+import { getCollection, type CollectionEntry } from 'astro:content';
+import type { GetStaticPathsOptions, Page } from 'astro';
+import { Image } from 'astro:assets';
 
-export async function getStaticPaths({ paginate }: { paginate: Function }) {
+export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
   const allStories = await getCollection('stories');
   const langs = Object.keys(languages) as Lang[];
+  const pageSize = 10;
+  // Page counts per language: a paginated page may not exist in every language
+  const pageCounts = Object.fromEntries(langs.map(l => [
+    l, Math.max(1, Math.ceil(allStories.filter(s => s.data.lang === l).length / pageSize)),
+  ]));
 
   return langs.flatMap(lang => {
     const filtered = allStories
@@ -14,21 +22,32 @@ export async function getStaticPaths({ paginate }: { paginate: Function }) {
 
     return paginate(filtered, {
       params: { lang },
-      pageSize: 10,
+      props: { pageCounts },
+      pageSize,
     });
   });
 }
 
-const { page } = Astro.props;
+interface Props {
+  page: Page<CollectionEntry<'stories'>>;
+  pageCounts: Record<Lang, number>;
+}
+
+const { page, pageCounts } = Astro.props;
 const lang = Astro.params.lang as Lang;
 const i = t(lang);
 
 const pageLabel = i.home.pageOf
   .replace('{current}', String(page.currentPage))
   .replace('{total}', String(page.lastPage));
+
+const alternateLangs = (Object.keys(languages) as Lang[])
+  .filter(l => pageCounts[l] >= page.currentPage);
+
+const jsonLd = [schema(Astro.site, lang).breadcrumbs([{ name: i.stories.title, path: `/${lang}/stories/` }])];
 ---
 
-<BaseLayout title={page.currentPage === 1 ? i.stories.title : `${i.stories.title} — ${pageLabel}`} lang={lang}>
+<BaseLayout title={page.currentPage === 1 ? i.stories.title : `${i.stories.title} — ${pageLabel}`} lang={lang} description={i.stories.subtitle} alternateLangs={alternateLangs} jsonLd={jsonLd}>
   <header class="page-header">
     <h1>{i.stories.title}</h1>
     <p>{i.stories.subtitle}</p>
@@ -46,14 +65,14 @@ const pageLabel = i.home.pageOf
                 <span class="story-tag">{tag}</span>
               ))}
             </div>
-            <a href={`/${lang}/stories/${story.data.storySlug}`} class="story-title-link">
+            <a href={`/${lang}/stories/${story.data.storySlug}/`} class="story-title-link">
               <h2>{story.data.title}</h2>
             </a>
             <p class="story-excerpt">{story.data.description}</p>
-            <a href={`/${lang}/stories/${story.data.storySlug}`} class="story-read">{i.home.readMore} &rarr;</a>
+            <a href={`/${lang}/stories/${story.data.storySlug}/`} class="story-read">{i.home.readMore} &rarr;</a>
           </div>
           {story.data.image && (
-            <img class="story-image" src={story.data.image} alt={story.data.title} loading="lazy" />
+            <Image class="story-image" src={story.data.image} alt={story.data.title} widths={[140, 280, 480, 800]} sizes="(max-width: 768px) 100vw, 140px" />
           )}
         </article>
       );
@@ -63,13 +82,13 @@ const pageLabel = i.home.pageOf
   {page.lastPage > 1 && (
     <nav class="pagination">
       {page.url.prev ? (
-        <a href={page.url.prev} class="pagination-link prev">&larr; {i.home.prevPage}</a>
+        <a href={withTrailingSlash(page.url.prev)} class="pagination-link prev">&larr; {i.home.prevPage}</a>
       ) : (
         <span class="pagination-link prev disabled">&larr; {i.home.prevPage}</span>
       )}
       <span class="pagination-current">{pageLabel}</span>
       {page.url.next ? (
-        <a href={page.url.next} class="pagination-link next">{i.home.nextPage} &rarr;</a>
+        <a href={withTrailingSlash(page.url.next)} class="pagination-link next">{i.home.nextPage} &rarr;</a>
       ) : (
         <span class="pagination-link next disabled">{i.home.nextPage} &rarr;</span>
       )}
