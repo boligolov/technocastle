@@ -305,7 +305,7 @@ The girl felt the virtual world around her begin to swim, losing its depth.
 
 There was only time here, and that time was the time of reality. She had time—Alice had time. And so did he: the player with the golden assault rifle.
 
-His image was a costume, and beneath it was a real human being who breathed, whose heart—his personal timer—beat, counting off the time that passed.
+His image was a costume, and beneath it was a real human being who breathed, whose heart — his personal timer—beat, counting off the time that passed.
 
 Alice felt her hands grow heavy. Before her mind's eye, the second hand slowed rapidly, coming to a stop.
 
@@ -365,7 +365,7 @@ Right now, she needed to wash it all off. Even the things that couldn't be washe
 <a id="0x00-mob">Mob (mobile object)</a> — an active or moving non-player character, often an enemy  
 <a id="0x00-pers">Character</a> — the player's in-game persona or playable character  
 <a id="0x00-spawn">Spawn point / respawn point</a> — the location where an item, NPC, mob, or player appears or reappears  
-<a id="0x00-shitbricks">Shit bricks</a> — an English idiom meaning to be absolutely terrified  
+<a id="0x00-shitbricks">Shit bricks</a> — an idiom meaning to be absolutely terrified  
 <a id="0x00-moveset">Moveset</a> — a character's repertoire of movements, such as attacks, defense, walking, and running  
 <a id="0x00-health">Health / health bar / HP</a> — a character's remaining health, represented by points or a meter  
 <a id="0x00-heal">Heal / heal up</a> — to restore a game character's health  
